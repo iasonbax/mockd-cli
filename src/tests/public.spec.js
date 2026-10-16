@@ -85,6 +85,15 @@ describe("a public repository", () => {
   });
 });
 
+describe("the language", () => {
+  // A simple guard against German text: the repository is public and written in English.
+  it("keeps umlauts out of the working rules, the pull request template and the top-level documents", () => {
+    const files = ["AGENT.md", ".github/pull_request_template.md", "README.md", "CONTRIBUTING.md", "SECURITY.md"];
+    const found = files.filter((path) => /[äöüÄÖÜß]/.test(readFileSync(path, "utf8")));
+    expect(found).toEqual([]);
+  });
+});
+
 describe("the package", () => {
   const pkg = JSON.parse(readFileSync("package.json", "utf8"));
 

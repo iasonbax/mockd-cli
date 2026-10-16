@@ -184,7 +184,7 @@ describe("run", () => {
   it("shows a refusal of the playground as its sentence, exit 1", async () => {
     const err = [];
     const fetch = vi.fn(async () =>
-      mkRes({ detail: { reason: "address_in_use", reopens_at: "2026-09-26T11:58:00Z", detail: "Von diesem Browser laeuft schon ein Lauf." } }, 409)
+      mkRes({ detail: { reason: "address_in_use", reopens_at: "2026-09-26T11:58:00Z", detail: "A run from this browser is already in progress." } }, 409)
     );
     expect(await run(["try", "run", "create"], { fetch, env: {}, ...linux(), out: () => {}, err: (s) => err.push(s) })).toBe(1);
     expect(err).toEqual([
@@ -258,11 +258,11 @@ describe("run", () => {
 
   it("returns 1 on HTTP error, surfacing detail", async () => {
     const err = [];
-    const fetch = vi.fn(async () => mkRes({ detail: "Session nicht gefunden" }, 404));
+    const fetch = vi.fn(async () => mkRes({ detail: "Session not found" }, 404));
     const code = await run(["try", "run", "status", "x"], { fetch, env: {}, out: () => {}, err: (s) => err.push(s) });
     expect(code).toBe(1);
     expect(err.join()).toContain("404");
-    expect(err.join()).toContain("Session nicht gefunden");
+    expect(err.join()).toContain("Session not found");
   });
 
   it("returns 2 on usage error (unknown command), without calling the api", async () => {
@@ -317,11 +317,11 @@ describe("guide end to end", () => {
   });
 
   it("ends with exit 1 and the backend's sentence for a topic it does not have", async () => {
-    const fetch = vi.fn(async () => mkRes({ detail: "Thema nicht gefunden" }, 404));
+    const fetch = vi.fn(async () => mkRes({ detail: "Topic not found" }, 404));
     const err = [];
     const code = await run(["guide", "nope"], { fetch, env: {}, ...linux(), out: () => {}, err: (s) => err.push(s) });
     expect(code).toBe(1);
-    expect(err).toEqual(["HTTP 404: Thema nicht gefunden"]);
+    expect(err).toEqual(["HTTP 404: Topic not found"]);
   });
 });
 

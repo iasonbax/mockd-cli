@@ -38,7 +38,7 @@ describe("ci.yml", () => {
 
   it("lets `check` fail first when a pull request to main does not come from dev of this repository", () => {
     const [first] = stepsOf(job(ci, "check"));
-    expect(first).toContain("name: Releases kommen nur als PR dev → main");
+    expect(first).toContain("name: Releases only come as a pull request from dev to main");
     expect(first).toContain("github.base_ref == 'main'");
     expect(first).toContain("github.head_ref != 'dev'");
     expect(first).toContain("github.event.pull_request.head.repo.full_name != github.repository");

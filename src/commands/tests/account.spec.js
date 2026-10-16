@@ -136,14 +136,14 @@ describe("logout", () => {
   });
 
   it("takes a 401 for an access the server removed already", async () => {
-    const { ctx } = world({ stored: STORED, answer: new ApiError(401, "Client-Zugang ungültig") });
+    const { ctx } = world({ stored: STORED, answer: new ApiError(401, "Client access invalid") });
     const data = await account.logout.execute({}, ctx);
     expect(data).toMatchObject({ removed: true, server: "unknown" });
     expect(account.logout.render(data)).toBe("logged out (file); the server knew this access no more");
   });
 
   it("takes a 403 for an access that is no read access", async () => {
-    const { ctx } = world({ stored: STORED, answer: new ApiError(403, "Nur der Lesezugang selbst") });
+    const { ctx } = world({ stored: STORED, answer: new ApiError(403, "Only the read access itself") });
     const data = await account.logout.execute({}, ctx);
     expect(account.logout.render(data)).toBe("logged out (file); the stored access was no read access, the server had none to remove");
   });

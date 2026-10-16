@@ -3,7 +3,7 @@ import { ApiError } from "../../core/errors.js";
 import { explained, refusalOf } from "../try-refusals.js";
 
 const inUse = (reopens_at) =>
-  new ApiError(409, { reason: "address_in_use", reopens_at, detail: "Von diesem Browser laeuft schon ein Lauf." });
+  new ApiError(409, { reason: "address_in_use", reopens_at, detail: "A run from this browser is already in progress." });
 
 describe("refusalOf", () => {
   it("says from when the next run can start after the lock", () => {
@@ -56,7 +56,7 @@ describe("refusalOf", () => {
   });
 
   it("leaves everything it does not know alone", () => {
-    expect(refusalOf(new ApiError(404, "nicht gefunden"), {})).toBeNull();
+    expect(refusalOf(new ApiError(404, "not found"), {})).toBeNull();
     expect(refusalOf(new ApiError(409, { reason: "job_not_open" }), {})).toBeNull();
     expect(refusalOf(new ApiError(409, { reason: "toString" }), {})).toBeNull();
     expect(refusalOf(new Error("boom"), {})).toBeNull();

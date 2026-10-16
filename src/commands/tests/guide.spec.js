@@ -69,7 +69,7 @@ describe("guide", () => {
 
   // There is no built-in text: what the backend answers with is all there is.
   it("passes the backend's refusal on, and has no copy of the text to show instead", async () => {
-    await expect(run(["nope"], new ApiError(404, "Thema nicht gefunden"))).rejects.toThrow("HTTP 404: Thema nicht gefunden");
+    await expect(run(["nope"], new ApiError(404, "Topic not found"))).rejects.toThrow("HTTP 404: Topic not found");
     await expect(run([], new Error("cannot reach https://api.mock-d.com: ENOTFOUND"))).rejects.toThrow("cannot reach");
   });
 

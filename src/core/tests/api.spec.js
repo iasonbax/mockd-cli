@@ -36,10 +36,10 @@ describe("makeApi", () => {
 
 describe("makeApi and the answers that are errors", () => {
   it("throws ApiError with status and the API's detail", async () => {
-    const fetch = vi.fn(async () => mkRes('{"detail":"nicht gefunden"}', 404));
+    const fetch = vi.fn(async () => mkRes('{"detail":"not found"}', 404));
     const call = makeApi(fetch, "http://api.test")({ method: "GET", path: "/x" });
     await expect(call).rejects.toBeInstanceOf(ApiError);
-    await expect(call).rejects.toMatchObject({ status: 404, detail: "nicht gefunden", message: "HTTP 404: nicht gefunden" });
+    await expect(call).rejects.toMatchObject({ status: 404, detail: "not found", message: "HTTP 404: not found" });
   });
 
   it("keeps a structured detail as data and shows it as JSON, not as [object Object]", async () => {

@@ -120,7 +120,7 @@ The standalone files are built with [Bun](https://bun.sh): `scripts/build-binari
 writes `dist/mockd-linux-x64`, and `scripts/smoke-binary.sh dist/mockd-linux-x64` starts it the way
 a user's machine does. A merge to `main` publishes all five files and `SHA256SUMS` as a release.
 
-How the code is cut, and how changes get in, is written down in [AGENT.md](AGENT.md) (German) and
+How the code is cut, and how changes get in, is written down in [AGENT.md](AGENT.md) and
 [CONTRIBUTING.md](CONTRIBUTING.md). Security reports: [SECURITY.md](SECURITY.md).
 
 ## License

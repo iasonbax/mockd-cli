@@ -41,13 +41,13 @@ describe("signOut", () => {
   });
 
   it("counts a 401 as an access the server knows no more, and removes it here", async () => {
-    const { state, ctx } = world(STORED, new ApiError(401, "Client-Zugang ungültig"));
+    const { state, ctx } = world(STORED, new ApiError(401, "Client access invalid"));
     expect(await signOut(ctx)).toEqual({ removed: true, server: "unknown", error: null });
     expect(state.removed).toBe(1);
   });
 
   it("counts a 403 as an access that is no read access: nothing to remove there", async () => {
-    const { state, ctx } = world(STORED, new ApiError(403, "Nur der Lesezugang selbst"));
+    const { state, ctx } = world(STORED, new ApiError(403, "Only the read access itself"));
     expect(await signOut(ctx)).toEqual({ removed: true, server: "none", error: null });
     expect(state.removed).toBe(1);
   });

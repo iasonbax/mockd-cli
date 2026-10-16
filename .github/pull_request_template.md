@@ -1,21 +1,21 @@
 Closes #
 
-## Abstract
+## Summary
 
 <!-- One or two sentences: what is this about, and what was done? -->
 
-## Architektonische Implikationen
+## Architecture
 
-<!-- Routes, contracts, new modules, changed files or formats on disk; "Keine" if there are none. -->
+<!-- Routes, contracts, new modules, changed files or formats on disk; "None" if there are none. -->
 
-## Angepasste Funktionalitäten
+## Behavior
 
 <!-- What changes in behavior, seen from the user of the CLI. -->
 
-## Tests
+## Testing
 
-<!-- What ran and with which numbers (passed/total); what is deliberately not tested. -->
+<!-- What ran, with numbers (passed/total); what is deliberately not tested. -->
 
-## Erklärungen
+## Notes
 
 <!-- Only what would stay unclear otherwise, in one or two sentences. -->

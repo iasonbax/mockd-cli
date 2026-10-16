@@ -18,7 +18,7 @@ function world(entries, answers) {
   const seen = [];
   ctx.api = async (r) => {
     seen.push(r.path);
-    if (!(r.path in answers)) throw new ApiError(404, "Adresse nicht gefunden");
+    if (!(r.path in answers)) throw new ApiError(404, "Address not found");
     const answer = answers[r.path];
     if (answer instanceof Error) throw answer;
     return answer;

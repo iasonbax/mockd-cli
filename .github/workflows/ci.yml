@@ -42,7 +42,7 @@ jobs:
       # First, before anything is built: main takes a release and nothing else, and a release
       # is the pull request dev → main from this repository. The names go in through env, never
       # into the script: a branch name is whatever its author typed.
-      - name: Releases kommen nur als PR dev → main
+      - name: Releases only come as a pull request from dev to main
         if: >-
           github.event_name == 'pull_request' && github.base_ref == 'main' &&
           (github.head_ref != 'dev' || github.event.pull_request.head.repo.full_name != github.repository)
@@ -50,7 +50,7 @@ jobs:
           HEAD_REF: ${{ github.head_ref }}
           HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
         run: |
-          echo "::error::Releases kommen nur als PR dev → main (a release only comes as a pull request from dev to main). This pull request comes from $HEAD_REPO:$HEAD_REF; changes go to dev."
+          echo "::error::Releases only come as a pull request from dev to main. This pull request comes from $HEAD_REPO:$HEAD_REF; changes go to dev."
           exit 1
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
