@@ -1,0 +1,11 @@
+node_modules/
+*.log
+*.tgz
+.DS_Store
+# the standalone binaries (scripts/build-binaries.sh)
+dist/
+# secrets never belong in this repository
+.env
+.env.*
+# git worktrees of coding agents
+.claude/worktrees/

@@ -1,0 +1,39 @@
+{
+  "name": "@mock-d/cli",
+  "version": "0.1.0",
+  "description": "Mock APIs for agents, from the command line.",
+  "license": "MIT",
+  "homepage": "https://mock-d.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iasonbax/mockd-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/iasonbax/mockd-cli/issues"
+  },
+  "type": "module",
+  "bin": {
+    "mockd": "bin/mockd.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "!src/**/tests",
+    "skills",
+    "LICENSE",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.12.0",
+    "globals": "^17.13.0",
+    "vitest": "^5.0.3"
+  }
+}
