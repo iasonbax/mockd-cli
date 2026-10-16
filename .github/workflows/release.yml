@@ -1,0 +1,129 @@
+name: Release
+
+# A release is the merge dev → main (AGENT.md). Its push builds the standalone file of every
+# target (scripts/build-binaries.sh) and publishes them with SHA256SUMS as release
+# v<version from package.json> in this repository, where https://mock-d.com/install downloads
+# them. The release is made with the token of the run itself: no other token, no secret.
+on:
+  push:
+    branches: [main]
+
+# One release at a time, and none cancelled halfway: a cancelled run can leave a release
+# without all its files.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  # 1.4 or newer. The same pin as ci.yml.
+  BUN_VERSION: 1.4.2
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          # Linux and Windows are cross-compiled on Linux; the x64 Linux file is started.
+          - runner: ubuntu-latest
+            targets: linux-x64 linux-arm64 windows-x64
+            starts: linux-x64
+          # macOS on macOS, because only there can the files be signed: Apple Silicon kills an
+          # unsigned binary before it runs. Ad hoc (`-`) needs no certificate. The runner is
+          # arm64, so the arm64 file is started.
+          - runner: macos-latest
+            targets: darwin-arm64 darwin-x64
+            starts: darwin-arm64
+    runs-on: ${{ matrix.runner }}
+    # A ceiling, not a target: macOS minutes count tenfold on private repositories.
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Node only reads the version the smoke test compares with; the files themselves need none.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Build the files (bun build --compile)
+        run: scripts/build-binaries.sh ${{ matrix.targets }}
+
+      - name: Sign the macOS files ad hoc
+        if: runner.os == 'macOS'
+        run: |
+          set -euo pipefail
+          for file in dist/mockd-darwin-*; do
+            codesign --sign - --force "$file"
+            codesign --verify --verbose "$file"
+          done
+
+      - name: Start the file of this runner (version, help, commands)
+        run: |
+          set -euo pipefail
+          scripts/smoke-binary.sh "dist/mockd-${{ matrix.starts }}" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mockd-${{ runner.os }}
+          path: dist/
+          if-no-files-found: error
+          # Needed only until `publish` has run (or is re-run); the files are large.
+          retention-days: 1
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # The one job that writes: it creates the tag and the release in this repository.
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: mockd-*
+          path: dist
+          merge-multiple: true
+
+      # Exactly the files https://mock-d.com/install asks for, by these names; one missing
+      # would be a system the script cannot install on.
+      - name: Checksums (SHA256SUMS)
+        working-directory: dist
+        run: |
+          set -euo pipefail
+          for file in mockd-darwin-arm64 mockd-darwin-x64 mockd-linux-x64 mockd-linux-arm64 mockd-windows-x64.exe; do
+            [ -f "$file" ] || { echo "::error::$file is missing among the built files."; exit 1; }
+          done
+          sha256sum mockd-* > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version=$(jq -r .version package.json)
+          if gh release view "v$version" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "::error::v$version exists already in $GITHUB_REPOSITORY. A release needs a new version in package.json (the release commit, AGENT.md: Versioning)."
+            exit 1
+          fi
+          cat > notes.md <<EOF
+          mockd $version: one file per system, no Node needed.
+
+              curl -fsSL https://mock-d.com/install | sh     # macOS, Linux
+              irm https://mock-d.com/install.ps1 | iex       # Windows (PowerShell)
+
+          The install script picks the file for the system, checks it against SHA256SUMS and puts mockd on the PATH.
+          EOF
+          gh release create "v$version" dist/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "mockd $version" --notes-file notes.md

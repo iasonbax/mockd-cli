@@ -1,0 +1,136 @@
+name: CI
+
+# Checks every pull request against dev or main as soon as it is no draft. There is nothing to
+# deploy: the CLI is released as one file per system (release.yml). A push to dev or main does
+# not run: the pull request before it checked the same tree.
+on:
+  pull_request:
+    branches: [dev, main]
+    # ready_for_review on top of the defaults: drafts get no run (see the jobs' `if`), so the
+    # moment a draft is marked ready has to start one.
+    types: [opened, synchronize, reopened, ready_for_review]
+  # By hand: a workflow that never ran is an unchecked promise.
+  workflow_dispatch:
+
+concurrency:
+  # Drafts get a group of their own. A push to a draft and `gh pr ready` right after start two
+  # runs on one commit, in either order: `synchronize` (still a draft, the jobs skipped) and
+  # `ready_for_review`. Sharing a group, the later cancels the earlier, and the skipped run
+  # would kill the real one. Ready runs of a PR still share theirs, so a new push still cancels
+  # a stale run; hand starts keep their group.
+  group: ${{ github.workflow }}-${{ github.ref }}${{ github.event.pull_request.draft && '-draft' || '' }}
+  # Only pull-request runs are superseded by a newer push.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  # The job a ruleset requires on main: its name is exactly `check`, so it stays a plain job
+  # (a matrix would rename it to `check (…)`).
+  check:
+    # Pull requests only, and not while they are drafts: work in a draft costs nothing,
+    # `gh pr ready` starts the run. workflow_dispatch stays for the hand start.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && !github.event.pull_request.draft)
+    runs-on: ubuntu-latest
+    # The job takes about a minute; the ceiling only stops a hung run from burning GitHub's
+    # 360-minute default.
+    timeout-minutes: 5
+    steps:
+      # First, before anything is built: main takes a release and nothing else, and a release
+      # is the pull request dev → main from this repository. The names go in through env, never
+      # into the script: a branch name is whatever its author typed.
+      - name: Releases only come as a pull request from dev to main
+        if: >-
+          github.event_name == 'pull_request' && github.base_ref == 'main' &&
+          (github.head_ref != 'dev' || github.event.pull_request.head.repo.full_name != github.repository)
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+        run: |
+          echo "::error::Releases only come as a pull request from dev to main. This pull request comes from $HEAD_REPO:$HEAD_REF; changes go to dev."
+          exit 1
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Known vulnerabilities in the dependencies: only `high` and above, so the run stops at
+      # something worth acting on and the gate is not switched off out of habit. Dependabot
+      # (.github/dependabot.yml) is the other half: it proposes the update a red gate asks for.
+      - name: Vulnerabilities in dependencies (npm audit)
+        run: npm audit --audit-level=high
+
+      # The clean-code gate: the limits stand in eslint.config.mjs (complexity, parameters,
+      # nesting, file length). When this breaks, the function is too big.
+      - name: Lint (ESLint, clean-code rules)
+        run: npm run lint
+
+      # Includes src/tests/structure.spec.js: every spec lies in a tests/ folder.
+      - name: Tests (Vitest)
+        run: npm test
+
+  binary:
+    # The standalone file https://mock-d.com/install downloads, built from this tree the way
+    # release.yml builds it, then started on the system it was built for: Linux, macOS and
+    # Windows, so the file is proven to run without node. The same gate as `check`.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && !github.event.pull_request.draft)
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            target: linux-x64
+            file: mockd-linux-x64
+          - runner: macos-latest
+            target: darwin-arm64
+            file: mockd-darwin-arm64
+          - runner: windows-latest
+            target: windows-x64
+            file: mockd-windows-x64.exe
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Node only reads the version the smoke test compares with; the file itself needs none.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          # 1.4 or newer. The same pin as release.yml.
+          bun-version: 1.4.2
+
+      - name: Build the file (bun build --compile)
+        run: scripts/build-binaries.sh ${{ matrix.target }}
+
+      # Apple Silicon kills an unsigned binary before it runs. Ad hoc (`-`) needs no certificate.
+      - name: Sign the macOS file ad hoc
+        if: runner.os == 'macOS'
+        run: |
+          set -euo pipefail
+          codesign --sign - --force "dist/${{ matrix.file }}"
+          codesign --verify --verbose "dist/${{ matrix.file }}"
+
+      # pipefail: the shell GitHub picks here has none, and `tee` would hide a failed start.
+      - name: Start the file (version, help, commands)
+        run: |
+          set -euo pipefail
+          scripts/smoke-binary.sh "dist/${{ matrix.file }}" | tee -a "$GITHUB_STEP_SUMMARY"
